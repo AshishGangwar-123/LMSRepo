@@ -1,5 +1,5 @@
 ---
-title: AshishGPT
+title: LMS Backend
 emoji: 🤖
 colorFrom: blue
 colorTo: indigo
@@ -8,6 +8,7 @@ sdk_version: 1.42.0
 app_file: app.py
 pinned: false
 license: mit
+author:Ashish Kumar
 ---
 
 # AshishGPT
@@ -32,6 +33,5 @@ An AI Assistant powered by Groq (Llama 3.3, Mistral Saba).
 ## Deploy on Hugging Face Spaces
 
 1. Create a new Space on [Hugging Face](https://huggingface.co/new-space).
-2. Select **Streamlit** as the SDK.
-3. Upload `app.py`, `requirements.txt`, and `README.md`.
-4. Add your `GROQ_API_KEY` in the Space Settings > Repository secrets.
+2. Upload `app.py`, `requirements.txt`, and `README.md`.
+3. Add your `GROQ_API_KEY` in the Space Settings > Repository secrets.
