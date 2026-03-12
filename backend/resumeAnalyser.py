@@ -18,21 +18,26 @@ app = FastAPI(title="Resume Analyzer API")
 # =========================================================
 # CORS
 # =========================================================
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:5173",
+        "http://localhost:5174",
         "http://localhost:5175",
+        "http://localhost:8000",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
         "http://127.0.0.1:5175",
+        "http://127.0.0.1:8000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
 # =========================================================
 # Skills DB
 # =========================================================
@@ -43,13 +48,17 @@ SKILL_DB = [
     "deep learning", "nlp", "rag", "langchain", "docker", "aws", "rest api",
     "restful api", "streamlit", "pandas", "numpy", "scikit-learn", "opencv",
     "firebase", "tailwind", "bootstrap", "linux", "oop", "data structures",
-    "algorithms", "api", "jwt", "socket.io", "redis", "kubernetes"
+    "algorithms", "api", "jwt", "socket.io", "redis", "kubernetes", "tableau",
+    "power bi", "excel", "figma", "canva", "tensorflow", "pytorch", "keras",
+    "spring boot", "hibernate", "microservices", "graphql", "postman",
+    "azure", "gcp", "problem solving", "communication", "leadership"
 ]
 
 ACTION_VERBS = [
     "developed", "built", "designed", "created", "implemented", "optimized",
     "improved", "led", "managed", "automated", "deployed", "integrated",
-    "analyzed", "engineered", "tested", "delivered"
+    "analyzed", "engineered", "tested", "delivered", "launched", "solved",
+    "reduced", "increased", "boosted", "streamlined", "enhanced"
 ]
 
 
@@ -61,9 +70,12 @@ def extract_text_from_pdf(pdf_path: str) -> str:
     text_parts = []
 
     for page in reader.pages:
-        page_text = page.extract_text()
-        if page_text:
-            text_parts.append(page_text)
+        try:
+            page_text = page.extract_text()
+            if page_text:
+                text_parts.append(page_text)
+        except Exception:
+            continue
 
     return "\n".join(text_parts).strip()
 
@@ -145,7 +157,7 @@ def detect_resume_sections(resume_text: str) -> Dict[str, bool]:
     text_lower = resume_text.lower()
 
     section_aliases = {
-        "summary": ["summary", "profile", "objective", "about me"],
+        "summary": ["summary", "profile", "objective", "about me", "professional summary"],
         "education": ["education", "academic", "qualification"],
         "experience": ["experience", "work experience", "internship", "employment"],
         "projects": ["project", "projects"],
@@ -174,13 +186,27 @@ def has_quantified_achievements(resume_text: str) -> bool:
     patterns = [
         r"\b\d+%\b",
         r"\b\d+\+?\b",
-        r"\b\d+\s*(users|projects|clients|days|months|years)\b",
-        r"\b(increased|reduced|improved|boosted|saved)\b.*\b\d+"
+        r"\b\d+\s*(users|projects|clients|days|months|years|hours|weeks)\b",
+        r"\b(increased|reduced|improved|boosted|saved)\b.*\b\d+",
+        r"\b\d+\s*(x|times)\b"
     ]
     text_lower = resume_text.lower()
     return any(re.search(pattern, text_lower) for pattern in patterns)
 
 
+def extract_possible_job_titles(text: str) -> List[str]:
+    titles = [
+        "developer", "software engineer", "engineer", "data analyst",
+        "analyst", "frontend developer", "backend developer", "full stack developer",
+        "intern", "designer", "manager", "consultant", "tester", "qa engineer"
+    ]
+    text_lower = text.lower()
+    return [title for title in titles if title in text_lower]
+
+
+# =========================================================
+# Realistic ATS scoring
+# =========================================================
 def calculate_ats_analysis(
     email: Optional[str],
     phone: Optional[str],
@@ -190,109 +216,161 @@ def calculate_ats_analysis(
     jd_keywords: List[str],
     matched_keywords: List[str],
 ) -> Dict[str, Any]:
-    ats_score = 0
     strengths = []
     improvements = []
 
+    sections = detect_resume_sections(resume_text)
+    action_verbs_found = extract_action_verbs(resume_text)
+    quantified = has_quantified_achievements(resume_text)
+    word_count = len(resume_text.split())
+    job_titles_found = extract_possible_job_titles(resume_text)
+
+    # 1) JD MATCH SCORE (0 to 50)
+    jd_score = 0
+
+    if jd_keywords:
+        keyword_ratio = len(matched_keywords) / max(len(jd_keywords), 1)
+
+        if keyword_ratio >= 0.85:
+            jd_score += 42
+            strengths.append("Resume is strongly aligned with the job description keywords.")
+        elif keyword_ratio >= 0.65:
+            jd_score += 34
+            strengths.append("Resume has a good keyword match with the job description.")
+        elif keyword_ratio >= 0.45:
+            jd_score += 24
+            strengths.append("Resume has partial keyword alignment with the job description.")
+        elif keyword_ratio >= 0.25:
+            jd_score += 14
+            improvements.append("Add more important keywords from the job description.")
+        else:
+            jd_score += 6
+            improvements.append("Resume is weakly aligned with the job description keywords.")
+
+        if len(matched_keywords) >= 5:
+            jd_score += 5
+        elif len(matched_keywords) >= 3:
+            jd_score += 3
+
+        if job_titles_found:
+            jd_score += 3
+    else:
+        improvements.append("Add a job description for a more accurate ATS match analysis.")
+
+    jd_score = min(jd_score, 50)
+
+    # 2) ATS PARSABILITY SCORE (0 to 30)
+    ats_parsability = 0
+
     if email:
-        ats_score += 8
+        ats_parsability += 4
         strengths.append("Email address is present.")
     else:
         improvements.append("Add a professional email address.")
 
     if phone:
-        ats_score += 8
+        ats_parsability += 4
         strengths.append("Phone number is present.")
     else:
         improvements.append("Add a phone number.")
 
     if links:
-        ats_score += 8
+        ats_parsability += 3
         strengths.append("Professional links are included.")
     else:
         improvements.append("Add LinkedIn or GitHub/profile links if relevant.")
 
-    if len(skills) >= 8:
-        ats_score += 15
-        strengths.append("Good variety of technical skills detected.")
-    elif len(skills) >= 4:
-        ats_score += 10
-        strengths.append("Relevant skills are present.")
-    else:
-        improvements.append("Add a clearer technical skills section.")
-
-    sections = detect_resume_sections(resume_text)
-
     if sections["education"]:
-        ats_score += 8
+        ats_parsability += 4
     else:
         improvements.append("Add an Education section.")
 
     if sections["experience"]:
-        ats_score += 12
-        strengths.append("Experience or internship section detected.")
+        ats_parsability += 5
     else:
-        improvements.append("Add Experience or Internship details if available.")
+        improvements.append("Add an Experience section if applicable.")
 
     if sections["projects"]:
-        ats_score += 12
-        strengths.append("Projects section is present.")
+        ats_parsability += 4
     else:
-        improvements.append("Add a Projects section to showcase practical work.")
+        improvements.append("Add a Projects section.")
 
     if sections["skills"]:
-        ats_score += 10
+        ats_parsability += 4
     else:
         improvements.append("Add a dedicated Skills section.")
 
     if sections["summary"]:
-        ats_score += 6
-        strengths.append("Profile/Summary section is present.")
+        ats_parsability += 2
     else:
-        improvements.append("Add a short professional summary at the top.")
+        improvements.append("Add a short professional summary.")
 
-    if sections["certifications"]:
-        ats_score += 4
+    ats_parsability = min(ats_parsability, 30)
 
-    if sections["achievements"]:
-        ats_score += 4
+    # 3) CONTENT QUALITY SCORE (0 to 20)
+    content_quality = 0
 
-    action_verbs_found = extract_action_verbs(resume_text)
+    if len(skills) >= 8:
+        content_quality += 5
+        strengths.append("Good range of technical skills detected.")
+    elif len(skills) >= 5:
+        content_quality += 3
+    else:
+        improvements.append("Expand and clarify your technical skills.")
+
     if action_verbs_found:
-        ats_score += 8
-        strengths.append("Strong action verbs are used in resume points.")
+        content_quality += 5
+        strengths.append("Strong action verbs are used.")
     else:
         improvements.append("Use stronger action verbs like developed, built, optimized, led.")
 
-    if has_quantified_achievements(resume_text):
-        ats_score += 10
-        strengths.append("Some quantified achievements or measurable details are present.")
+    if quantified:
+        content_quality += 6
+        strengths.append("Resume includes measurable or quantified impact.")
     else:
-        improvements.append("Add quantified results, metrics, or impact where possible.")
+        improvements.append("Add quantified achievements, metrics, or business impact.")
 
-    if jd_keywords:
-        if len(matched_keywords) == len(jd_keywords):
-            ats_score += 15
-            strengths.append("Resume strongly matches the provided job description keywords.")
-        elif len(matched_keywords) >= max(1, len(jd_keywords) // 2):
-            ats_score += 10
-            strengths.append("Resume matches a fair number of job description keywords.")
-        elif matched_keywords:
-            ats_score += 5
-        else:
-            improvements.append("Tailor the resume to the job description with more relevant keywords.")
+    if sections["experience"] and sections["projects"] and quantified:
+        content_quality += 2
 
-    ats_score = min(100, ats_score)
+    if word_count < 180:
+        improvements.append("Resume content looks too short; add more relevant detail.")
+    elif word_count > 900:
+        improvements.append("Resume may be too long; tighten weak or repetitive content.")
+
+    content_quality = min(content_quality, 20)
+
+    # FINAL SCORE
+    final_score = jd_score + ats_parsability + content_quality
+
+    if not jd_keywords:
+        final_score = min(final_score, 78)
+
+    if not sections["experience"] and not sections["projects"]:
+        final_score = min(final_score, 72)
+
+    if not quantified:
+        final_score = min(final_score, 84)
+
+    final_score = min(final_score, 96)
 
     return {
-        "ats_score": ats_score,
+        "ats_score": int(round(final_score)),
         "strengths_rule_based": strengths,
         "improvements_rule_based": improvements,
         "detected_sections": sections,
         "action_verbs_found": action_verbs_found,
+        "score_breakdown": {
+            "jd_match": int(round(jd_score)),
+            "ats_parsability": int(round(ats_parsability)),
+            "content_quality": int(round(content_quality)),
+        }
     }
 
 
+# =========================================================
+# LLM helpers
+# =========================================================
 def parse_llm_json(text: str) -> Dict[str, Any]:
     text = text.strip()
 
@@ -319,11 +397,13 @@ def parse_llm_json(text: str) -> Dict[str, Any]:
 
 def generate_llm_feedback(llm: ChatGroq, resume_text: str, analysis_data: Dict[str, Any]) -> Dict[str, Any]:
     prompt = f"""
-You are an expert ATS resume analyzer for job seekers.
+You are an ATS resume reviewer for job seekers.
 
-Your task is to analyze the candidate's resume and provide improvement-focused feedback.
-Do NOT act like a recruiter or hiring manager.
-Treat this as a resume optimization tool for the candidate.
+Important:
+- Do not invent or change the ATS score.
+- The score is already computed separately.
+- Use the structured analysis as the source of truth.
+- Your job is only to explain the result and suggest improvements.
 
 Resume text:
 {resume_text[:5000]}
@@ -339,12 +419,11 @@ suggestions
 improved_summary
 
 Rules:
-- "summary" should be 2-3 short lines about overall resume quality.
-- "strengths" should be a JSON array of short strings.
-- "weaknesses" should be a JSON array of short strings.
-- "suggestions" should be a JSON array of practical improvement suggestions.
-- "improved_summary" should be a better professional summary the user can paste into resume.
-- Keep the tone supportive, user-facing, and professional.
+- Keep feedback strict and realistic, not overly positive.
+- If keyword match is weak, say it clearly.
+- If quantified impact is missing, mention it clearly.
+- If sections are missing, mention them clearly.
+- improved_summary should be concise, ATS-friendly, and role-focused.
 - No markdown.
 - No extra text before or after JSON.
 """
@@ -353,6 +432,9 @@ Rules:
     return parse_llm_json(response.content)
 
 
+# =========================================================
+# Main analyzer
+# =========================================================
 def analyze_resume_file(pdf_path: str, job_description: str = "") -> Dict[str, Any]:
     raw_text = extract_text_from_pdf(pdf_path)
     cleaned_text = clean_text(raw_text)
@@ -398,6 +480,7 @@ def analyze_resume_file(pdf_path: str, job_description: str = "") -> Dict[str, A
         "improvements_rule_based": rule_analysis["improvements_rule_based"],
         "detected_sections": rule_analysis["detected_sections"],
         "action_verbs_found": rule_analysis["action_verbs_found"],
+        "score_breakdown": rule_analysis["score_breakdown"],
     }
 
     llm_feedback = {
@@ -422,8 +505,16 @@ def analyze_resume_file(pdf_path: str, job_description: str = "") -> Dict[str, A
         "resumeScore": base_analysis["resume_score"],
         "missingKeywords": base_analysis["missing_keywords"],
         "matchedKeywords": base_analysis["matched_keywords"],
-        "strengths": llm_feedback["strengths"] if llm_feedback["strengths"] else base_analysis["strengths_rule_based"],
-        "improvements": llm_feedback["suggestions"] if llm_feedback["suggestions"] else base_analysis["improvements_rule_based"],
+        "strengths": (
+            llm_feedback["strengths"]
+            if llm_feedback["strengths"]
+            else base_analysis["strengths_rule_based"]
+        ),
+        "improvements": (
+            llm_feedback["suggestions"]
+            if llm_feedback["suggestions"]
+            else base_analysis["improvements_rule_based"]
+        ),
         "coverLetterSkills": [
             {
                 "skill": "Keyword Alignment",
@@ -449,13 +540,17 @@ def analyze_resume_file(pdf_path: str, job_description: str = "") -> Dict[str, A
             "links": links,
             "skillsFound": resume_skills,
             "detectedSections": base_analysis["detected_sections"],
-            "actionVerbsFound": base_analysis["action_verbs_found"]
+            "actionVerbsFound": base_analysis["action_verbs_found"],
+            "scoreBreakdown": base_analysis["score_breakdown"]
         }
     }
 
     return final_result
 
 
+# =========================================================
+# Routes
+# =========================================================
 @app.get("/")
 def home():
     return {"message": "Resume Analyzer API is running"}
@@ -508,3 +603,4 @@ async def analyze_resume(
     finally:
         if temp_file_path and os.path.exists(temp_file_path):
             os.remove(temp_file_path)
+# this code should be backend code only no? then why error still```
