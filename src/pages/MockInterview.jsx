@@ -7,7 +7,7 @@ import {
 import { RiRobot2Line } from 'react-icons/ri';
 import './MockInterview.css';
 
-const API_BASE_URL = 'http://127.0.0.1:8010';
+const API_BASE_URL = 'http://127.0.0.1:8000';
 
 function MockInterview() {
   const [messages, setMessages] = useState([
