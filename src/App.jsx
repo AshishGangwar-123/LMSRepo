@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './context/useAuth';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import SpeakingExercise from './pages/SpeakingExercise';

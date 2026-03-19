@@ -1,0 +1,18 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "functions": {
+    "api/**/*.py": {
+      "maxDuration": 60,
+      "excludeFiles": "{.git/**,.venv/**,myenv/**,node_modules/**,dist/**,src/**,public/**,backend/mockInterview.py,backend/resumeAnalyser.py,backend/Procfile,backend/render.yaml,backend/railway.json,backend/README.md}"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

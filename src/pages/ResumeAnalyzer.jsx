@@ -9,7 +9,10 @@ import {
     HiOutlineXCircle,
 } from 'react-icons/hi2';
 import ScoreCircle from '../components/ScoreCircle';
+import { apiUrl } from '../api';
 import './ResumeAnalyzer.css';
+
+const MAX_RESUME_FILE_SIZE_BYTES = 4 * 1024 * 1024;
 
 const mockAnalysis = {
     atsScore: 74,
@@ -42,9 +45,28 @@ function ResumeAnalyzer() {
     const [showResults, setShowResults] = useState(false);
     const [analysisResult, setAnalysisResult] = useState(null);
 
+    const validateResumeFile = (file) => {
+        if (!file) {
+            return false;
+        }
+
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        if (!isPdf) {
+            alert('Sirf PDF resume upload karo.');
+            return false;
+        }
+
+        if (file.size > MAX_RESUME_FILE_SIZE_BYTES) {
+            alert('Vercel deploy ke liye resume PDF 4 MB se chhota hona chahiye.');
+            return false;
+        }
+
+        return true;
+    };
+
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
-        if (file) {
+        if (validateResumeFile(file)) {
             setResumeFile(file);
         }
     };
@@ -59,7 +81,7 @@ function ResumeAnalyzer() {
             formData.append('resume', resumeFile);
             formData.append('job_description', jdText);
 
-            const response = await fetch('http://127.0.0.1:8000/analyze-resume', {
+            const response = await fetch(apiUrl('/api/resume/analyze'), {
                 method: 'POST',
                 body: formData,
             });
@@ -88,17 +110,44 @@ function ResumeAnalyzer() {
     const handleDrop = (e) => {
         e.preventDefault();
         const file = e.dataTransfer.files[0];
-        if (
-            file &&
-            (
-                file.type === 'application/pdf' ||
-                file.type === 'application/msword' ||
-                file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-                file.name.toLowerCase().endsWith('.pdf')
-            )
-        ) {
+        if (validateResumeFile(file)) {
             setResumeFile(file);
         }
+    };
+
+    const downloadAnalysisReport = () => {
+        if (!analysisResult) {
+            return;
+        }
+
+        const reportLines = [
+            'NLM Resume Analysis Report',
+            `Generated: ${new Date().toLocaleString()}`,
+            '',
+            `ATS Score: ${analysisResult.atsScore ?? 0}`,
+            `Keyword Match: ${analysisResult.keywordMatch ?? 0}`,
+            `Resume Score: ${analysisResult.resumeScore ?? 0}`,
+            '',
+            'Matched Keywords:',
+            ...(analysisResult.matchedKeywords?.length ? analysisResult.matchedKeywords : ['None']),
+            '',
+            'Missing Keywords:',
+            ...(analysisResult.missingKeywords?.length ? analysisResult.missingKeywords : ['None']),
+            '',
+            'Strengths:',
+            ...(analysisResult.strengths?.length ? analysisResult.strengths : ['None']),
+            '',
+            'Improvements:',
+            ...(analysisResult.improvements?.length ? analysisResult.improvements : ['None']),
+        ].join('\n');
+
+        const blob = new Blob([reportLines], { type: 'text/plain;charset=utf-8' });
+        const downloadUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = 'nlm-resume-report.txt';
+        link.click();
+        URL.revokeObjectURL(downloadUrl);
     };
 
     const data = analysisResult || mockAnalysis;
@@ -144,12 +193,12 @@ function ResumeAnalyzer() {
                                         Browse Files
                                         <input
                                             type="file"
-                                            accept=".pdf,.doc,.docx"
+                                            accept=".pdf"
                                             onChange={handleFileUpload}
                                             hidden
                                         />
                                     </label>
-                                    <span className="drop-hint">Supports PDF, DOC, DOCX</span>
+                                    <span className="drop-hint">Supports PDF only</span>
                                 </div>
                             )}
                         </div>
@@ -198,7 +247,10 @@ function ResumeAnalyzer() {
                             >
                                 Upload New
                             </button>
-                            <button className="btn btn-primary btn-sm">
+                            <button
+                                className="btn btn-primary btn-sm"
+                                onClick={downloadAnalysisReport}
+                            >
                                 <HiOutlineArrowDownTray size={14} />
                                 Download Report
                             </button>

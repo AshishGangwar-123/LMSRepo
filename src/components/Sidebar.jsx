@@ -1,5 +1,5 @@
-import { NavLink, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { NavLink } from 'react-router-dom';
+import { useAuth } from '../context/useAuth';
 import {
     HiOutlineHome,
     HiOutlineMicrophone,
@@ -21,7 +21,6 @@ const navItems = [
 
 function Sidebar() {
     const { user, logout } = useAuth();
-    const location = useLocation();
 
     return (
         <aside className="sidebar">

@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: lms-backend
+    runtime: python
+    rootDir: .
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        value: https://lmsprototype-six.vercel.app
+      - key: CORS_ORIGINS
+        value: https://lmsprototype-six.vercel.app
+      - key: PYTHON_VERSION
+        value: 3.11.11

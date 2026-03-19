@@ -1,9 +1,21 @@
-import { createContext, useState, useContext } from 'react';
+import { useEffect, useState } from 'react';
+import AuthContext from './auth-context';
 
-const AuthContext = createContext(null);
+const STORAGE_KEY = 'nlm-user';
 
 export function AuthProvider({ children }) {
-    const [user, setUser] = useState(null);
+    const [user, setUser] = useState(() => {
+        if (typeof window === 'undefined') {
+            return null;
+        }
+
+        try {
+            const savedUser = window.localStorage.getItem(STORAGE_KEY);
+            return savedUser ? JSON.parse(savedUser) : null;
+        } catch {
+            return null;
+        }
+    });
 
     const login = (userData) => {
         setUser({
@@ -22,12 +34,22 @@ export function AuthProvider({ children }) {
 
     const logout = () => setUser(null);
 
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        if (user) {
+            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+            return;
+        }
+
+        window.localStorage.removeItem(STORAGE_KEY);
+    }, [user]);
+
     return (
         <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
             {children}
         </AuthContext.Provider>
     );
 }
-
-export const useAuth = () => useContext(AuthContext);
-export default AuthContext;

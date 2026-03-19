@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { RiRobot2Line } from 'react-icons/ri';
 import { HiOutlineSparkles, HiOutlineAcademicCap, HiOutlineChartBar } from 'react-icons/hi2';
 import { FcGoogle } from 'react-icons/fc';

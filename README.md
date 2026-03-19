@@ -1,16 +1,66 @@
-# React + Vite
+# NLM Project
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Ye repo ab single Vercel deploy ke liye ready kiya ja raha hai:
 
-Currently, two official plugins are available:
+- frontend: Vite + React
+- backend: FastAPI serverless function at `/api`
+- mock interview: stateless request flow, so Vercel Functions cold starts me chat history break nahi hogi
+- resume analyzer: PDF bytes ko memory me parse karta hai, temp-file dependency nahi
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Local development
 
-## React Compiler
+1. Frontend dependencies install karo:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+```
 
-## Expanding the ESLint configuration
+2. Python environment banao aur backend dependencies install karo:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+3. Root `.env.example` aur `backend/.env.example` dekh kar env vars set karo.
+
+4. FastAPI locally run karo:
+
+```bash
+uvicorn backend.main:app --reload --port 8000
+```
+
+5. Frontend run karo:
+
+```bash
+npm run dev
+```
+
+Vite proxy already `/api/*` ko `http://127.0.0.1:8000` par forward karta hai, isliye local frontend ke liye alag API URL dena optional hai.
+
+## Vercel deploy
+
+1. Repo GitHub par push karo.
+2. Vercel me same repo import karo.
+3. Project root repo root hi rakho.
+4. Required environment variable set karo:
+   - `GROQ_API_KEY`
+5. Optional env vars:
+   - `GROQ_MODEL`
+   - `GROQ_TEMPERATURE`
+   - `GROQ_MAX_TOKENS`
+   - `FRONTEND_URL`
+   - `CORS_ORIGINS`
+   - `MAX_RESUME_FILE_SIZE_BYTES`
+6. `VITE_API_BASE_URL` mat set karo agar frontend aur backend same Vercel project me deploy kar rahe ho.
+7. Deploy ke baad check karo:
+   - `/api/health`
+   - `/interview`
+   - `/resume`
+
+## Notes
+
+- Resume PDF ko 4 MB ke andar rakho. Vercel Functions request body limit ki wajah se bada file reject hoga.
+- Preview deployments ke liye Vercel domains allowed hain.
+- Active backend source `backend/main.py` hai, aur Vercel entrypoint `api/index.py`.

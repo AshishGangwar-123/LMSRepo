@@ -5,9 +5,8 @@ import {
   HiOutlineArrowPath,
 } from 'react-icons/hi2';
 import { RiRobot2Line } from 'react-icons/ri';
+import { apiUrl } from '../api';
 import './MockInterview.css';
-
-const API_BASE_URL = 'http://127.0.0.1:8000';
 
 function MockInterview() {
   const [messages, setMessages] = useState([
@@ -31,6 +30,10 @@ function MockInterview() {
     if (!input.trim() || isTyping) return;
 
     const userText = input.trim();
+    const history = messages.map((message) => ({
+      role: message.role,
+      text: message.text,
+    }));
 
     const userMsg = {
       role: 'user',
@@ -43,11 +46,12 @@ function MockInterview() {
     setIsTyping(true);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/chat`, {
+      const res = await fetch(apiUrl('/api/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           session_id: sessionId,
+          history,
           message: userText,
         }),
       });
@@ -88,14 +92,6 @@ function MockInterview() {
   };
 
   const resetInterview = async () => {
-    try {
-      await fetch(`${API_BASE_URL}/api/reset/${sessionId}`, {
-        method: 'POST',
-      });
-    } catch (error) {
-      console.error(error);
-    }
-
     setMessages([
       {
         role: 'ai',
