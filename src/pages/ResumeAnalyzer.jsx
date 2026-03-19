@@ -86,15 +86,25 @@ function ResumeAnalyzer() {
                 body: formData,
             });
 
+            const rawResponse = await response.text();
             let result = {};
-            try {
-                result = await response.json();
-            } catch {
-                result = {};
+
+            if (rawResponse) {
+                try {
+                    result = JSON.parse(rawResponse);
+                } catch {
+                    throw new Error(
+                        rawResponse.trim() || `Resume analysis failed with status ${response.status}`
+                    );
+                }
             }
 
             if (!response.ok) {
-                throw new Error(result.detail || 'Resume analysis failed');
+                throw new Error(
+                    result.detail ||
+                    result.message ||
+                    `Resume analysis failed with status ${response.status}`
+                );
             }
 
             setAnalysisResult(result);

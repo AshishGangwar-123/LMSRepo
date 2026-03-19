@@ -56,10 +56,25 @@ function MockInterview() {
         }),
       });
 
-      const data = await res.json();
+      const rawResponse = await res.text();
+      let data = {};
+
+      if (rawResponse) {
+        try {
+          data = JSON.parse(rawResponse);
+        } catch {
+          throw new Error(
+            rawResponse.trim() || `Request failed with status ${res.status}`
+          );
+        }
+      }
 
       if (!res.ok) {
-        throw new Error(data?.detail || 'Request failed');
+        throw new Error(
+          data?.detail ||
+          data?.message ||
+          `Request failed with status ${res.status}`
+        );
       }
 
       const aiMsg = {
